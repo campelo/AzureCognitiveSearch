@@ -29,4 +29,9 @@
 https://{search-service-name}.search.windows.net/indexes/{indexName}/docs?api-version=2020-06-30&search=car*
 ```
 
+To make a request contains. [Lucene](https://learn.microsoft.com/en-ca/azure/search/query-lucene-syntax) documentation.
+```
+search=/.*hi.*/&queryType=full
+```
+
 [search documentation](https://learn.microsoft.com/en-us/rest/api/searchservice/search-documents)
