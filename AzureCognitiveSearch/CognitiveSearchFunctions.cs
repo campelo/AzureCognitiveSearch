@@ -106,4 +106,23 @@ public class CognitiveSearchFunctions
         response.WriteString($"Documents added.");
         return response;
     }
+
+    [Function("SearchValues")]
+    public async Task<HttpResponseData> SearchValues([HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = $"{nameof(SearchValues)}/{{indexName}}/{{searchText}}")] HttpRequestData req, string indexName, string searchText)
+    {
+        _logger.LogInformation($"C# HTTP trigger function {nameof(SearchValues)} processed a request.");
+        SearchClient searchClient = new(_serviceEndPoint, indexName, _credential);
+
+        SearchOptions searchOptions = new()
+        {
+            IncludeTotalCount = true,
+            QueryType = SearchQueryType.Simple
+        };
+        SearchResults<DocTest> results = await searchClient.SearchAsync<DocTest>(searchText, searchOptions);
+
+        var response = req.CreateResponse(HttpStatusCode.OK);
+        response.Headers.Add("Content-Type", "application/json; charset=utf-8");
+        response.WriteString(JsonConvert.SerializeObject(results));
+        return response;
+    }
 }
