@@ -43,9 +43,17 @@ public class CognitiveSearchFunctions
             {
                 Fields = new List<SearchField>()
                 {
-                    new ("Id", SearchFieldDataType.String) { IsKey = true },
-                    new ("Name", SearchFieldDataType.String),
-                    new ("Description", SearchFieldDataType.String),
+                    new (nameof(FhirClass.Id), SearchFieldDataType.String) { IsKey = true },
+                    new (nameof(FhirClass.Type), SearchFieldDataType.String),
+                    new (nameof(FhirClass.Family), SearchFieldDataType.String),
+                    new (nameof(FhirClass.Given), SearchFieldDataType.String),
+                    new (nameof(FhirClass.Practitioner), SearchFieldDataType.String),
+                    new (nameof(FhirClass.Organization), SearchFieldDataType.String),
+                    new (nameof(FhirClass.Identifier), SearchFieldDataType.String),
+                    new (nameof(FhirClass.Address), SearchFieldDataType.String),
+                    new (nameof(FhirClass.Name), SearchFieldDataType.String),
+                    new (nameof(FhirClass.Description), SearchFieldDataType.String),
+                    new (nameof(FhirClass.Phone), SearchFieldDataType.String),
                 },
             };
 
@@ -82,15 +90,27 @@ public class CognitiveSearchFunctions
         catch { return false; }
     }
 
-    [Function("AddValues")]
-    public async Task<HttpResponseData> AddValues([HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = $"{nameof(AddValues)}/{{indexName}}")] HttpRequestData req, string indexName)
+    [Function("AddValue")]
+    public async Task<HttpResponseData> AddValue([HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = $"{nameof(AddValue)}/{{indexName}}")] HttpRequestData req, string indexName)
     {
-        _logger.LogInformation($"C# HTTP trigger function {nameof(CreateIndex)} processed a request.");
-        SearchClient searchClient = new(_serviceEndPoint, indexName, _credential);
+        _logger.LogInformation($"C# HTTP trigger function {nameof(AddValue)} processed a request.");
+
 
         string bodyString = await new StreamReader(req.Body).ReadToEndAsync();
-        DocTest document = JsonConvert.DeserializeObject<DocTest>(bodyString);
-        IndexDocumentsBatch<DocTest> batch = IndexDocumentsBatch.Create(IndexDocumentsAction.Upload(document));
+        FhirClass document = JsonConvert.DeserializeObject<FhirClass>(bodyString);
+        await InternalAddValues(indexName, new List<FhirClass>() { document });
+
+        var response = req.CreateResponse(HttpStatusCode.OK);
+        response.Headers.Add("Content-Type", "text/plain; charset=utf-8");
+        response.WriteString($"Documents added.");
+        return response;
+    }
+
+    private async Task InternalAddValues<T>(string indexName, IEnumerable<T> documents)
+    {
+        SearchClient searchClient = new(_serviceEndPoint, indexName, _credential);
+        IndexDocumentsAction<T>[] actions = documents.Select(x => IndexDocumentsAction.Upload(x)).ToArray();
+        IndexDocumentsBatch<T> batch = IndexDocumentsBatch.Create(actions);
 
         try
         {
@@ -100,6 +120,16 @@ public class CognitiveSearchFunctions
         {
             throw;
         }
+    }
+
+    [Function("AddValues")]
+    public async Task<HttpResponseData> AddValues([HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = $"{nameof(AddValues)}/{{indexName}}")] HttpRequestData req, string indexName)
+    {
+        _logger.LogInformation($"C# HTTP trigger function {nameof(AddValues)} processed a request.");
+
+        string bodyString = await new StreamReader(req.Body).ReadToEndAsync();
+        IEnumerable<FhirClass> documents = JsonConvert.DeserializeObject<IEnumerable<FhirClass>>(bodyString);
+        await InternalAddValues(indexName, documents);
 
         var response = req.CreateResponse(HttpStatusCode.OK);
         response.Headers.Add("Content-Type", "text/plain; charset=utf-8");
